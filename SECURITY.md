@@ -1,51 +1,109 @@
-# Security Policy
+# For most projects, this workflow file will not need changing; you simply need
+# to commit it to your repository.
+#
+# You may wish to alter this file to override the set of languages analyzed,
+# or to provide custom queries or build logic.
+#
+# ******** NOTE ********
+# We have attempted to detect the languages in your repository. Please check
+# the `language` matrix defined below to confirm you have the correct set of
+# supported CodeQL languages.
+#
+name: "CodeQL Advanced"
 
-## Reporting a vulnerability
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+  schedule:
+    - cron: '23 20 * * 5'
 
-Please send a detailed mail to git-security@googlegroups.com to
-report vulnerabilities in Git.
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    # Runner size impacts CodeQL analysis time. To learn more, please see:
+    #   - https://gh.io/recommended-hardware-resources-for-running-codeql
+    #   - https://gh.io/supported-runners-and-hardware-resources
+    #   - https://gh.io/using-larger-runners (GitHub.com only)
+    # Consider using larger runners or machines with greater resources for possible analysis time improvements.
+    runs-on: ${{ (matrix.language == 'swift' && 'macos-latest') || 'ubuntu-latest' }}
+    permissions:
+      # required for all workflows
+      security-events: write
 
-Even when unsure whether the bug in question is an exploitable
-vulnerability, it is recommended to send the report to
-git-security@googlegroups.com (and obviously not to discuss the
-issue anywhere else).
+      # required to fetch internal or private CodeQL packs
+      packages: read
 
-Vulnerabilities are expected to be discussed _only_ on that
-list, and not in public, until the official announcement on the
-Git mailing list on the release date.
+      # only required for workflows in private repositories
+      actions: read
+      contents: read
 
-Examples for details to include:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+        - language: c-cpp
+          build-mode: autobuild
+        - language: go
+          build-mode: autobuild
+        - language: javascript-typescript
+          build-mode: none
+        - language: python
+          build-mode: none
+        - language: rust
+          build-mode: none
+        - language: swift
+          build-mode: autobuild
+        # CodeQL supports the following values keywords for 'language': 'actions', 'c-cpp', 'csharp', 'go', 'java-kotlin', 'javascript-typescript', 'python', 'ruby', 'rust', 'swift'
+        # Use `c-cpp` to analyze code written in C, C++ or both
+        # Use 'java-kotlin' to analyze code written in Java, Kotlin or both
+        # Use 'javascript-typescript' to analyze code written in JavaScript, TypeScript or both
+        # To learn more about changing the languages that are analyzed or customizing the build mode for your analysis,
+        # see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/customizing-your-advanced-setup-for-code-scanning.
+        # If you are analyzing a compiled language, you can modify the 'build-mode' for that language to customize how
+        # your codebase is analyzed, see https://docs.github.com/en/code-security/code-scanning/creating-an-advanced-setup-for-code-scanning/codeql-code-scanning-for-compiled-languages
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
 
-- Ideally a short description (or a script) to demonstrate an
-  exploit.
-- The affected platforms and scenarios (the vulnerability might
-  only affect setups with case-sensitive file systems, for
-  example).
-- The name and affiliation of the security researchers who are
-  involved in the discovery, if any.
-- Whether the vulnerability has already been disclosed.
-- How long an embargo would be required to be safe.
+    # Add any setup steps before running the `github/codeql-action/init` action.
+    # This includes steps like installing compilers or runtimes (`actions/setup-node`
+    # or others). This is typically only required for manual builds.
+    # - name: Setup runtime (example)
+    #   uses: actions/setup-example@v1
 
-## Supported Versions
+    # Initializes the CodeQL tools for scanning.
+    - name: Initialize CodeQL
+      uses: github/codeql-action/init@v4
+      with:
+        languages: ${{ matrix.language }}
+        build-mode: ${{ matrix.build-mode }}
+        # If you wish to specify custom queries, you can do so here or in a config file.
+        # By default, queries listed here will override any specified in a config file.
+        # Prefix the list here with "+" to use these queries and those in the config file.
 
-There are no official "Long Term Support" versions in Git.
-Instead, the maintenance track (i.e. the versions based on the
-most recently published feature release, also known as ".0"
-version) sees occasional updates with bug fixes.
+        # For more details on CodeQL's query packs, refer to: https://docs.github.com/en/code-security/code-scanning/automatically-scanning-your-code-for-vulnerabilities-and-errors/configuring-code-scanning#using-queries-in-ql-packs
+        # queries: security-extended,security-and-quality
 
-Fixes to vulnerabilities are made for the maintenance track for
-the latest feature release and merged up to the in-development
-branches. The Git project makes no formal guarantee for any
-older maintenance tracks to receive updates. In practice,
-though, critical vulnerability fixes are applied not only to the
-most recent track, but to at least a couple more maintenance
-tracks.
+    # If the analyze step fails for one of the languages you are analyzing with
+    # "We were unable to automatically build your code", modify the matrix above
+    # to set the build mode to "manual" for that language. Then modify this step
+    # to build your code.
+    # ℹ️ Command-line programs to run using the OS shell.
+    # 📚 See https://docs.github.com/en/actions/using-workflows/workflow-syntax-for-github-actions#jobsjob_idstepsrun
+    - name: Run manual build steps
+      if: matrix.build-mode == 'manual'
+      shell: bash
+      run: |
+        echo 'If you are using a "manual" build mode for one or more of the' \
+          'languages you are analyzing, replace this with the commands to build' \
+          'your code, for example:'
+        echo '  make bootstrap'
+        echo '  make release'
+        exit 1
 
-This is typically done by making the fix on the oldest and still
-relevant maintenance track, and merging it upwards to newer and
-newer maintenance tracks.
-
-For example, v2.24.1 was released to address a couple of
-[CVEs](https://cve.mitre.org/), and at the same time v2.14.6,
-v2.15.4, v2.16.6, v2.17.3, v2.18.2, v2.19.3, v2.20.2, v2.21.1,
-v2.22.2 and v2.23.1 were released.
+    - name: Perform CodeQL Analysis
+      uses: github/codeql-action/analyze@v4
+      with:
+        category: "/language:${{matrix.language}}"
